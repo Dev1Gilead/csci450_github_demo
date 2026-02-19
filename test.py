@@ -1,50 +1,34 @@
-import random
-import textwrap
-# Simple terminal Hangman-style word game.
-# Run: python game.py
-# Guess letters until the word is revealed.
-# Too many wrong guesses ends the game.
-WORDS = ["python", "variable", "function", "compiler", "network", "algorithm", "database"]
-STAGES = [
-    "  +---+\n      |\n      |\n      |\n     ===",
-    "  +---+\n  O   |\n      |\n      |\n     ===",
-    "  +---+\n  O   |\n  |   |\n      |\n     ===",
-    "  +---+\n  O   |\n /|\\  |\n      |\n     ===",
-    "  +---+\n  O   |\n /|\\  |\n / \\  |\n     ===",
-]
-def pick_word():
-    return random.choice(WORDS)
-def show_state(secret, guessed):
-    return " ".join(c if c in guessed else "_" for c in secret)
-def prompt_letter():
-    while True:
-        s = input("Guess a letter: ").strip().lower()
-        if len(s) == 1 and s.isalpha():
-            return s
-        print("Please enter a single letter.")
-def main():
-    secret = pick_word()
-    guessed, wrong = set(), 0
-    max_wrong = len(STAGES) - 1
-    msg = "Word Guess! You have limited wrong guesses. Type letters to reveal the word."
-    print(textwrap.fill(msg, 70))
-    while True:
-        print("\n" + STAGES[wrong])
-        print("Word:", show_state(secret, guessed))
-        print("Guessed:", " ".join(sorted(guessed)) or "(none)", "| Wrong:", wrong, "/", max_wrong)
-        if all(c in guessed for c in secret):
-            print("You win! The word was:", secret)
-            return
-        if wrong >= max_wrong:
-            print("You lose! The word was:", secret)
-            return
-        ch = prompt_letter()
-        if ch in guessed:
-            print("Already guessed.")
-            continue
-        guessed.add(ch)
-        if ch not in secret:
-            wrong += 1
-            print("Nope!")
-if __name__ == "__main__":
-    main()
+#!/usr/bin/env python3
+"""
+tiny_toolbox.py — a small CLI that logs notes, shows stats, and makes a quick plot.
+Standard library only.
+"""
+from __future__ import annotations
+import argparse, json, os, random, statistics, sys, time
+from pathlib import Path
+
+DB = Path.home() / ".tiny_toolbox_notes.json"
+
+def load_notes() -> list[dict]:
+    if DB.exists():
+        return json.loads(DB.read_text(encoding="utf-8") or "[]")
+    return []
+
+def save_notes(notes: list[dict]) -> None:
+    DB.write_text(json.dumps(notes, indent=2), encoding="utf-8")
+
+def cmd_add(text: str) -> None:
+    notes = load_notes()
+    notes.append({"t": int(time.time()), "text": text})
+    save_notes(notes)
+    print(f"Saved note #{len(notes)}")
+
+def cmd_list(limit: int) -> None:
+    notes = load_notes()[-limit:]
+    for i, n in enumerate(notes, 1):
+        ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(n["t"]))
+        print(f"{i:>2}. [{ts}] {n['text']}")
+
+def cmd_stats() -> None:
+    notes = load_notes()
+    lengths = [len(]()
