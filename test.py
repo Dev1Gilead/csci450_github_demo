@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-tiny_toolbox.py — a small CLI that logs notes, shows stats, and makes a quick plot.
+tiny_toolbox.py — a small CLI that logs notes, shows stats, and deletes notes.
 Standard library only.
 """
 from __future__ import annotations
-import argparse, json, os, random, statistics, sys, time
+import argparse, json, os, statistics, sys, time
 from pathlib import Path
 
-DB = Path.home() / ".tiny_toolbox_notes.json"
+DB = Path.home() / ".tiny_toolbox_data.json"
 
 def load_notes() -> list[dict]:
     if DB.exists():
@@ -15,20 +15,44 @@ def load_notes() -> list[dict]:
     return []
 
 def save_notes(notes: list[dict]) -> None:
-    DB.write_text(json.dumps(notes, indent=2), encoding="utf-8")
+    DB.write_text(json.dumps(notes, indent=4), encoding="utf-8")
 
 def cmd_add(text: str) -> None:
     notes = load_notes()
-    notes.append({"t": int(time.time()), "text": text})
+    notes.append({"timestamp": int(time.time()), "content": text})
     save_notes(notes)
-    print(f"Saved note #{len(notes)}")
+    print(f"Added entry #{len(notes)}")
 
 def cmd_list(limit: int) -> None:
-    notes = load_notes()[-limit:]
+    notes = load_notes()[:limit]
     for i, n in enumerate(notes, 1):
-        ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(n["t"]))
-        print(f"{i:>2}. [{ts}] {n['text']}")
+        ts = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(n["timestamp"]))
+        print(f"{i}. ({ts}) {n['content']}")
 
-def cmd_stats() -> None:
+def cmd_delete(index: int) -> None:
     notes = load_notes()
-    lengths = [len(]()
+    if 0 < index <= len(notes):
+        removed = notes.pop(index - 1)
+        save_notes(notes)
+        print(f"Deleted: {removed['content']}")
+    else:
+        print("Invalid index")
+
+def main(argv: list[str]) -> int:
+    p = argparse.ArgumentParser(prog="tiny_toolbox")
+    sub = p.add_subparsers(dest="cmd", required=True)
+    a = sub.add_parser("add"); a.add_argument("text")
+    l = sub.add_parser("list"); l.add_argument("-n", type=int, default=5)
+    d = sub.add_parser("delete"); d.add_argument("index", type=int)
+    sub.add_parser("stats")
+    args = p.parse_args(argv)
+    if args.cmd == "add": cmd_add(args.text)
+    elif args.cmd == "list": cmd_list(args.n)
+    elif args.cmd == "delete": cmd_delete(args.index)
+    else:
+        notes = load_notes()
+        print(f"Total entries: {len(notes)}")
+    return 0
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
